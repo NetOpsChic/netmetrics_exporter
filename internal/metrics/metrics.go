@@ -76,7 +76,37 @@ var (
 			Name: "netmetrics_lldp_neighbors_total",
 			Help: "Number of LLDP neighbors",
 		},
+		[]string{"hostname", "vendor"},
+	)
+
+	DeviceMemoryTotal = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "net_device_memory_total_mb",
+			Help: "Total memory (in MB)",
+		},
 		[]string{"hostname"},
+	)
+
+	DeviceMemoryFree = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "net_device_memory_free_mb",
+			Help: "Free memory (in MB)",
+		},
+		[]string{"hostname"},
+	)
+	CPUUsage = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "netmetrics_cpu_usage_percent",
+			Help: "CPU usage percent reported by the device",
+		},
+		[]string{"hostname", "vendor"},
+	)
+	MemoryUsage = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "netmetrics_memory_usage_percent",
+			Help: "Memory usage percent calculated from total/used",
+		},
+		[]string{"hostname", "vendor"},
 	)
 )
 
@@ -91,4 +121,8 @@ func Register() {
 	prometheus.MustRegister(InterfaceInputErrors)
 	prometheus.MustRegister(InterfaceOutputErrors)
 	prometheus.MustRegister(LLDPNeighbors)
+	prometheus.MustRegister(DeviceMemoryTotal)
+	prometheus.MustRegister(DeviceMemoryFree)
+	prometheus.MustRegister(CPUUsage)
+	prometheus.MustRegister(MemoryUsage)
 }

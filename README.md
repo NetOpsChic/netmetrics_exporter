@@ -3,7 +3,14 @@
 
 `netmetrics_exporter` is a Go-based Network device metric exporter designed for collecting network metrics from routers. Inspired by `node_exporter`, this exporter provides deep observability for network engineers and NetDevOps workflows.
 
-> ✅ Currently supports **Arista EOS** via eAPI over HTTP.
+- ✅ Currently supports **Arista EOS** via eAPI over HTTP  
+  - 🔧 Activates the HTTP/HTTPS eAPI server if not already active — no manual setup required.
+
+- ✅ Currently supports **Nokia SR Linux** via JSON‑RPC over HTTP (port 443 or 80)  
+  - 🔧 JSON‑RPC is automatically enabled if not already active — no manual setup required.
+
+- ✅ Currently supports Cisco CSR1000v via RESTCONF over HTTPS
+  - 🔧 RESTCONF must be enabled (restconf + ip http secure-server) — typically on by default in CSR.
 
 ---
 
@@ -41,7 +48,7 @@ make build
 
 ---
 
-## 📘 Sample Inventory (this has to be a running Arista router)
+## 📘 Sample Inventory (this has to be a running router)
 
 ```yaml
 all:
@@ -56,8 +63,6 @@ all:
 ---
 
 ## 🔍 Example Output
-
-Visit: [http://localhost:9200/metrics](http://localhost:9200/metrics)
 
 ```
 # HELP netmetrics_interface_up Interface status (1=up, 0=down)
@@ -74,7 +79,9 @@ netmetrics_bgp_peers{device="R1",vendor="arista"} 2
 ## 🛣 Roadmap
 
 - [x] Arista EOS support
-- [ ] Cisco IOS & Junos (via NAPALM)
+- [x] Nokia SR linux support
+- [x] Cisco csrv1000 
+- [ ] Junos (via NAPALM)
 - [ ] Native Prometheus service discovery integration
 - [ ] Containerized release for easy deployment
 

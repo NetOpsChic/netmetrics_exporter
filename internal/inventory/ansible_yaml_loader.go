@@ -9,7 +9,12 @@ import (
 
 type AnsibleYAML struct {
 	All struct {
-		Hosts map[string]map[string]interface{} `yaml:"hosts"`
+		Hosts    map[string]map[string]interface{} `yaml:"hosts"`
+		Vars     map[string]interface{}            `yaml:"vars"`
+		Children map[string]struct {
+			Vars  map[string]interface{}            `yaml:"vars"`
+			Hosts map[string]map[string]interface{} `yaml:"hosts"`
+		} `yaml:"children"`
 	} `yaml:"all"`
 }
 
@@ -25,16 +30,18 @@ func LoadAnsibleYAML(path string) []Device {
 	}
 
 	var devices []Device
+
+	// Parse all.hosts
 	for hostname, vars := range ansibleInv.All.Hosts {
-		dev := Device{
-			Hostname: hostname,
-			IP:       getString(vars["ansible_host"]),
-			Username: getString(vars["ansible_user"]),
-			Password: getString(vars["ansible_password"]),
-			Vendor:   NormalizeVendor(getString(vars["ansible_network_os"])),
-			Protocol: "eapi", // optional: default to eAPI for eos
+		devices = append(devices, buildDevice(hostname, vars, ansibleInv.All.Vars))
+	}
+
+	// Parse all.children
+	for _, group := range ansibleInv.All.Children {
+		for hostname, hostVars := range group.Hosts {
+			merged := mergeVars(group.Vars, hostVars)
+			devices = append(devices, buildDevice(hostname, merged, ansibleInv.All.Vars))
 		}
-		devices = append(devices, dev)
 	}
 
 	return devices
@@ -46,11 +53,49 @@ func getString(v interface{}) string {
 	}
 	return ""
 }
+func buildDevice(hostname string, vars map[string]interface{}, global map[string]interface{}) Device {
+	// Precedence: host > group > global
+	all := mergeVars(global, vars)
+
+	networkOS := getString(all["ansible_network_os"])
+	vendor := NormalizeVendor(networkOS)
+
+	protocol := "unknown"
+	switch vendor {
+	case "arista":
+		protocol = "eapi"
+	case "srlinux":
+		protocol = "jsonrpc"
+	case "cisco":
+		protocol = "restconf"
+	}
+
+	return Device{
+		Hostname: hostname,
+		IP:       getString(all["ansible_host"]),
+		Username: getString(all["ansible_user"]),
+		Password: getString(all["ansible_password"]),
+		Vendor:   vendor,
+		Protocol: protocol,
+	}
+}
+
+func mergeVars(a, b map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{})
+	for k, v := range a {
+		out[k] = v
+	}
+	for k, v := range b {
+		out[k] = v
+	}
+	return out
+}
 
 var vendorMap = map[string]string{
-	"eos":   "arista",
-	"ios":   "cisco",
-	"junos": "juniper",
+	"eos":                   "arista",
+	"ios":                   "cisco",
+	"junos":                 "juniper",
+	"nokia.srlinux.srlinux": "srlinux",
 }
 
 func NormalizeVendor(os string) string {

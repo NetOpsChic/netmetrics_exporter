@@ -9,6 +9,8 @@ import (
 	"time"
 
 	arista "netmetrics_exporter/internal/collector/arista"
+	"netmetrics_exporter/internal/collector/cisco"
+	"netmetrics_exporter/internal/collector/nokia"
 	"netmetrics_exporter/internal/inventory"
 	"netmetrics_exporter/internal/metrics"
 	"netmetrics_exporter/internal/version"
@@ -38,18 +40,32 @@ func main() {
 		devices = inventory.Load(*inventoryPath)
 	}
 
-	// Polling loop
+	// Debug: print loaded devices
+	for _, dev := range devices {
+		log.Printf("[DEBUG] Loaded Device: Hostname=%s IP=%s Vendor=%s Protocol=%s",
+			dev.Hostname, dev.IP, dev.Vendor, dev.Protocol)
+	}
+
+	// Start background collection loop
 	go func() {
 		for {
 			for _, dev := range devices {
+				var err error
+
 				switch dev.Vendor {
 				case "arista":
-					err := arista.AristaCollector{}.Collect(dev)
-					if err != nil {
-						log.Printf("[ERROR] %s: %v", dev.Hostname, err)
-					}
-				default:
-					log.Printf("[WARN] unsupported vendor: %s", dev.Vendor)
+					err = arista.AristaCollector{}.Collect(dev)
+
+				case "srlinux":
+					err = nokia.SRLinuxCollector{}.Collect(dev)
+
+				case "cisco":
+					log.Printf("[INFO] ▶️  Calling CollectorCSR for %s", dev.Hostname)
+					err = cisco.CollectorCSR{}.Collect(dev)
+				}
+
+				if err != nil {
+					log.Printf("[ERROR] %s (%s): %v", dev.Hostname, dev.Vendor, err)
 				}
 			}
 			time.Sleep(30 * time.Second)
